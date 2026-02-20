@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "HalluciGuard",
+  "version": "0.1.0",
+  "description": "Real-time hallucination detection for ChatGPT and Claude.",
+  "permissions": ["activeTab"],
+  "host_permissions": ["http://localhost:8000/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://claude.ai/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
