@@ -23,7 +23,8 @@ AI hallucinations are the #1 unsolved crisis in the AI industry. HalluciGuard is
 | 🌐 **Web Verification** | Cross-references claims against the web (Tavily, etc.) |
 | 📚 **RAG-Aware** | Verifies claims against your own retrieved context |
 | 🌊 **Streaming Support** | Works with real-time streaming LLM responses |
-| 🧩 **Provider Agnostic** | Works with OpenAI, Anthropic, Mistral, Ollama, and more |
+| 🤖 **Agent Hooks** | Native integration with OpenClaw autonomous agents |
+| 🧩 **Provider Agnostic** | Works with OpenAI, Anthropic, Google Gemini, Ollama, and more |
 | 🚦 **Risk Flagging** | Flags HIGH/MEDIUM/LOW risk claims before they reach users |
 | 📝 **Audit Logs** | Full JSON audit trail of every verification run |
 
@@ -109,13 +110,16 @@ guard = Guard(provider="openai", client=client, config=config)
 
 - [x] Core claim extraction engine
 - [x] LLM self-consistency scoring
-- [x] OpenAI + Anthropic provider support
+- [x] OpenAI + Anthropic + Google Gemini support
 - [x] Web verification plugin (Tavily)
-- [x] RAG-aware hallucination detection
-- [x] Real-time streaming support
-- [x] Fine-tuned local model support (GGUF/HF)
-- [x] Browser extension for ChatGPT/Claude (Alpha)
-- [ ] Real-time "Lookahead" verification (v0.6)
+- [x] RAG-aware hallucination detection (v0.2)
+- [x] Real-time streaming support (v0.3)
+- [x] Fine-tuned local model support (GGUF/HF) (v0.4)
+- [x] Browser extension for ChatGPT/Claude (Alpha) (v0.5)
+- [x] Multi-model provider expansion (v0.6)
+- [x] OpenClaw Agent Integration (v0.7)
+- [ ] Real-time "Lookahead" verification (v0.8)
+- [ ] Advanced RAG-aware deep-check (v0.9)
 - [ ] Enterprise dashboard + alerting (v1.0)
 
 ---
