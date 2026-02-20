@@ -138,9 +138,7 @@ class TestClaimExtractor:
         assert "Einstein was born in 1879." in claims
 
     def test_parse_claims_json_with_fences(self, extractor):
-        raw = '```json
-["Claim one.", "Claim two."]
-```'
+        raw = '```json\n["Claim one.", "Claim two."]\n```'
         claims = extractor._parse_claims_json(raw)
         assert "Claim one." in claims
 
