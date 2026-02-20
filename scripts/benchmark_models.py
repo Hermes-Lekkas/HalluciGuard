@@ -28,8 +28,30 @@ BENCHMARK_DATASET = [
 ]
 
 MODELS_TO_BENCHMARK = [
-    ("openai", "gpt-4o-mini"),
+    # OpenAI
     ("openai", "gpt-4o"),
+    ("openai", "gpt-4o-mini"),
+    ("openai", "gpt-5.3-codex"),
+    ("openai", "gpt-5.2-instant"),
+    ("openai", "gpt-5.2-thinking"),
+    
+    # Anthropic
+    ("anthropic", "claude-3-5-sonnet-20240620"),
+    ("anthropic", "claude-3-opus-20240229"),
+    ("anthropic", "claude-opus-4.6"),
+    ("anthropic", "claude-sonnet-4.6"),
+    
+    # Google Gemini
+    ("google", "gemini-1.5-pro"),
+    ("google", "gemini-1.5-flash"),
+    ("google", "gemini-3.1-pro"),
+    ("google", "gemini-3-deep-think"),
+    ("google", "gemini-3-flash"),
+    
+    # Local / Ollama (if available)
+    ("ollama", "llama3.2"),
+    ("ollama", "mistral"),
+    ("ollama", "phi3"),
 ]
 
 def run_benchmark():
