@@ -27,6 +27,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Hermes-Lekkas/HalluciGuard",
+    license="AGPL-3.0",
     packages=find_packages(),
     python_requires=">=3.9",
     install_requires=[],
@@ -54,7 +55,7 @@ setup(
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
