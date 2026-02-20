@@ -26,9 +26,9 @@ from typing import Any, Dict, List, Optional
 
 from .config import GuardConfig
 from .models import GuardedResponse, Claim, RiskLevel
-from .claim_extractor import ClaimExtractor
-from .scorer import HallucinationScorer
-from .report_builder import ReportBuilder
+from .detectors.extractor import ClaimExtractor
+from .detectors.scorer import HallucinationScorer
+from .reporters.builder import ReportBuilder
 from .streaming import StreamingGuardedResponse
 
 

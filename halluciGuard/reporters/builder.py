@@ -21,8 +21,8 @@ ReportBuilder — Generates structured hallucination reports.
 import datetime
 from typing import Dict, Any, List
 
-from .config import GuardConfig
-from .models import Claim, RiskLevel
+from ..config import GuardConfig
+from ..models import Claim, RiskLevel
 
 RISK_ICONS = {
     RiskLevel.SAFE: "✅",

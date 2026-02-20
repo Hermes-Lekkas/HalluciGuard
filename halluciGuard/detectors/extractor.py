@@ -22,7 +22,7 @@ import json
 import re
 from typing import List, Optional, Callable
 
-from .config import GuardConfig
+from ..config import GuardConfig
 
 EXTRACTION_PROMPT = """You are a factual claim extractor. Given an AI response, extract all discrete factual claims.
 
@@ -137,9 +137,9 @@ class ClaimExtractor:
         """
         sentences = re.split(r'(?<=[.!?])\s+', text)
         factual_indicators = re.compile(
-            r'(\d{4}|\d+%|[A-Z][a-z]+ [A-Z][a-z]+|published|invented|discovered|'
+            r'\b(\d{4}|\d+%|[A-Z][a-z]+ [A-Z][a-z]+|published|invented|discovered|'
             r'founded|born|died|located|consists of|defined as|equals|'
-            r'according to|research shows|studies show)'
+            r'according to|research shows|studies show)\b'
         )
         claims = []
         for sent in sentences:

@@ -28,8 +28,8 @@ import re
 import json
 from typing import List, Optional, Callable
 
-from .config import GuardConfig
-from .models import Claim, RiskLevel
+from ..config import GuardConfig
+from ..models import Claim, RiskLevel
 
 SCORER_PROMPT = """You are a hallucination detector. For each factual claim below, assess the likelihood it is accurate.
 
@@ -49,17 +49,17 @@ Claims to evaluate:
 
 # Words that indicate the LLM itself may be uncertain
 UNCERTAINTY_PATTERNS = re.compile(
-    r'(approximately|roughly|around|about|I believe|I think|'
+    r'\b(approximately|roughly|around|about|I believe|I think|'
     r'if I recall|as far as I know|may have|might have|possibly|'
-    r'probably|seems to|appears to|reportedly|allegedly)',
+    r'probably|seems to|appears to|reportedly|allegedly)\b',
     re.IGNORECASE,
 )
 
 # High-risk claim patterns (specific facts most likely to be hallucinated)
 HIGH_RISK_PATTERNS = re.compile(
-    r'(ISBN|DOI|exact quote|page \d+|chapter \d+|in \d{4} he|'
+    r'\b(ISBN|DOI|exact quote|page \d+|chapter \d+|in \d{4} he|'
     r'born on|died on|on (January|February|March|April|May|June|'
-    r'July|August|September|October|November|December) \d)',
+    r'July|August|September|October|November|December) \d)\b',
     re.IGNORECASE,
 )
 

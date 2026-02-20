@@ -24,9 +24,9 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from halluciGuard import Guard, GuardConfig, GuardedResponse, Claim, RiskLevel
-from halluciGuard.claim_extractor import ClaimExtractor
-from halluciGuard.scorer import HallucinationScorer
-from halluciGuard.report_builder import ReportBuilder
+from halluciGuard.detectors.extractor import ClaimExtractor
+from halluciGuard.detectors.scorer import HallucinationScorer
+from halluciGuard.reporters.builder import ReportBuilder
 
 
 # ────────────────────────────────────────────

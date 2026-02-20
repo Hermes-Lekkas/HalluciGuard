@@ -1,26 +1,5 @@
 # HalluciGuard - AI Hallucination Detection Middleware
 # Copyright (C) 2026 HalluciGuard Contributors
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-"""
-examples/basic_usage.py — Quick demo of HalluciGuard.
-
-Run:
-    export OPENAI_API_KEY="sk-..."
-    python examples/basic_usage.py
-"""
 
 from halluciGuard import Guard, GuardConfig
 
@@ -53,13 +32,8 @@ def openai_example():
     print("=" * 60)
     print("OPENAI EXAMPLE")
     print("=" * 60)
-    print(f"
-📝 Response:
-{response.content}
-")
-    print(f"
-{response.summary()}
-")
+    print(f"\n📝 Response:\n{response.content}\n")
+    print(f"\n{response.summary()}\n")
     if response.report:
         print(response.report["human_summary"])
 
@@ -87,13 +61,8 @@ def anthropic_example():
     print("=" * 60)
     print("ANTHROPIC EXAMPLE")
     print("=" * 60)
-    print(f"
-📝 Response:
-{response.content}
-")
-    print(f"
-{response.summary()}
-")
+    print(f"\n📝 Response:\n{response.content}\n")
+    print(f"\n{response.summary()}\n")
     if response.report:
         print(response.report["human_summary"])
 
@@ -104,17 +73,17 @@ def simulated_example():
     Demonstrates the hallucination detection pipeline without any real API call.
     Uses the internal scoring components directly.
     """
-    from halluciGuard.claim_extractor import ClaimExtractor
-    from halluciGuard.scorer import HallucinationScorer
-    from halluciGuard.report_builder import ReportBuilder
+    from halluciGuard.detectors.extractor import ClaimExtractor
+    from halluciGuard.detectors.scorer import HallucinationScorer
+    from halluciGuard.reporters.builder import ReportBuilder
     from halluciGuard import GuardConfig
 
     config = GuardConfig()
+    # Manual setup for demonstration
     extractor = ClaimExtractor(config)
     scorer = HallucinationScorer(config)
     reporter = ReportBuilder(config)
 
-    # Simulate an AI response with a mix of true and hallucinated claims
     fake_response = (
         "Albert Einstein was born in 1879 in Ulm, Germany. "
         "He is famous for winning the Nobel Prize for his theory of relativity in 1921. "
@@ -125,35 +94,25 @@ def simulated_example():
     print("=" * 60)
     print("SIMULATED EXAMPLE (no API key needed)")
     print("=" * 60)
-    print(f"
-📝 Fake AI Response:
-{fake_response}
-")
+    print(f"\n📝 Fake AI Response:\n{fake_response}\n")
 
-    # Heuristic extraction (no LLM key needed)
+    # Heuristic extraction
     claims_text = extractor._extract_heuristic(fake_response)
-    print(f"
-🔍 Extracted {len(claims_text)} claims:")
+    print(f"\n🔍 Extracted {len(claims_text)} claims:")
     for i, c in enumerate(claims_text, 1):
         print(f"  {i}. {c}")
 
-    # Heuristic scoring (no LLM key needed)
+    # Heuristic scoring
     scored_claims = scorer._score_heuristic(claims_text)
-    trust_score = 0.65  # Placeholder
+    trust_score = 0.65
     report = reporter.build(fake_response, scored_claims, trust_score, 0.01)
 
-    print(f"
-📊 Report:
-{report['human_summary']}")
+    print(f"\n📊 Report:\n{report['human_summary']}")
 
 
 if __name__ == "__main__":
-    print("
-🛡️  HalluciGuard Demo
-")
+    print("\n🛡️  HalluciGuard Demo\n")
     simulated_example()
-    print("
-─── To test with real LLMs, set your API key and uncomment below ───
-")
+    print("\n─── To test with real LLMs, set your API key and uncomment below ───\n")
     # openai_example()
     # anthropic_example()
