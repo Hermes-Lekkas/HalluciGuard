@@ -52,6 +52,12 @@ class StreamingGuardedResponse:
             # Anthropic stream events: message_start, content_block_start, content_block_delta, etc.
             if hasattr(chunk, 'type') and chunk.type == "content_block_delta":
                 return chunk.delta.text or ""
+        elif self._provider == "google":
+            # Gemini stream response chunks
+            try:
+                return chunk.text
+            except Exception:
+                return ""
         elif self._provider == "ollama":
             if isinstance(chunk, dict):
                 return chunk.get("message", {}).get("content", "")

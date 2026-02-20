@@ -175,9 +175,7 @@ class HallucinationScorer:
 
     def _enrich_with_rag_verification(self, claims: List[Claim], rag_context: List[str], model: str) -> List[Claim]:
         """Cross-reference claims against provided RAG context."""
-        context_str = "
----
-".join(rag_context)
+        context_str = "\n---\n".join(rag_context)
         
         for claim in claims:
             # We verify ALL claims against RAG context if it exists, as it's the "ground truth"
@@ -240,12 +238,8 @@ class HallucinationScorer:
                 continue
 
             # Format search results for the prompt
-            snippets = "
----
-".join([
-                f"Title: {r.get('title')}
-Source: {r.get('url')}
-Snippet: {r.get('content')}"
+            snippets = "\n---\n".join([
+                f"Title: {r.get('title')}\nSource: {r.get('url')}\nSnippet: {r.get('content')}"
                 for r in search_results
             ])
 

@@ -33,6 +33,7 @@ setup(
     extras_require={
         "openai": ["openai>=1.0.0"],
         "anthropic": ["anthropic>=0.25.0"],
+        "google": ["google-generativeai>=0.8.0"],
         "web": ["requests>=2.31.0"],
         "dev": [
             "pytest>=7.0",
@@ -41,10 +42,12 @@ setup(
             "ruff",
             "openai>=1.0.0",
             "anthropic>=0.25.0",
+            "google-generativeai>=0.8.0",
         ],
         "all": [
             "openai>=1.0.0",
             "anthropic>=0.25.0",
+            "google-generativeai>=0.8.0",
             "requests>=2.31.0",
         ],
     },

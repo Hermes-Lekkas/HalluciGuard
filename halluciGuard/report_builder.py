@@ -102,5 +102,4 @@ class ReportBuilder:
                 lines.append(f"     Confidence: {claim.confidence:.2f}")
         else:
             lines.append("✅ No significant hallucinations detected.")
-        return "
-".join(lines)
+        return "\n".join(lines)

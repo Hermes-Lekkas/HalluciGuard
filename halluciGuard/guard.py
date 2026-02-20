@@ -67,7 +67,7 @@ class Guard:
         print(response.flagged_claims)
     """
 
-    SUPPORTED_PROVIDERS = ["openai", "anthropic", "ollama", "openai_compatible"]
+    SUPPORTED_PROVIDERS = ["openai", "anthropic", "google", "ollama", "openai_compatible"]
 
     def __init__(
         self,
@@ -91,16 +91,22 @@ class Guard:
 
         # Auto-initialize client if missing but api_key/base_url provided
         if self.client is None:
-            if provider in ("openai", "openai_compatible"):
+            if provider in ("openai", "openai_compatible") and api_key:
                 try:
                     import openai
                     self.client = openai.OpenAI(api_key=api_key, base_url=base_url)
                 except ImportError:
                     pass
-            elif provider == "anthropic":
+            elif provider == "anthropic" and api_key:
                 try:
                     import anthropic
                     self.client = anthropic.Anthropic(api_key=api_key, base_url=base_url)
+                except ImportError:
+                    pass
+            elif provider == "google" and api_key:
+                try:
+                    from google import genai
+                    self.client = genai.Client(api_key=api_key)
                 except ImportError:
                     pass
 
@@ -256,6 +262,8 @@ class Guard:
             return self._call_openai(model, messages, **kwargs)
         elif self.provider == "anthropic":
             return self._call_anthropic(model, messages, **kwargs)
+        elif self.provider == "google":
+            return self._call_google(model, messages, **kwargs)
         elif self.provider == "ollama":
             return self._call_ollama(model, messages, **kwargs)
         else:
@@ -363,6 +371,8 @@ class Guard:
             return self._call_openai_stream(model, messages, **kwargs)
         elif self.provider == "anthropic":
             return self._call_anthropic_stream(model, messages, **kwargs)
+        elif self.provider == "google":
+            return self._call_google_stream(model, messages, **kwargs)
         else:
             raise ValueError(f"Streaming for provider '{self.provider}' not implemented.")
 
@@ -393,4 +403,57 @@ class Guard:
             messages=anthropic_messages,
             stream=True,
             **call_kwargs,
+        )
+
+    def _call_google(self, model, messages, **kwargs):
+        if self.client is None:
+            raise ValueError("client (google.genai) must be initialized for Google provider.")
+        
+        # Split into system instruction and conversation history
+        system_instruction = None
+        google_messages = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_instruction = msg["content"]
+            else:
+                google_messages.append({
+                    "role": "user" if msg["role"] == "user" else "model",
+                    "parts": [{"text": msg["content"]}]
+                })
+
+        # google-genai uses generate_content with a config
+        config = {"system_instruction": system_instruction}
+        config.update(kwargs)
+        
+        resp = self.client.models.generate_content(
+            model=model,
+            contents=google_messages,
+            config=config
+        )
+        
+        content = resp.text
+        return resp, content
+
+    def _call_google_stream(self, model, messages, **kwargs):
+        if self.client is None:
+            raise ValueError("client (google.genai) must be initialized for Google provider.")
+        
+        system_instruction = None
+        google_messages = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_instruction = msg["content"]
+            else:
+                google_messages.append({
+                    "role": "user" if msg["role"] == "user" else "model",
+                    "parts": [{"text": msg["content"]}]
+                })
+
+        config = {"system_instruction": system_instruction}
+        config.update(kwargs)
+
+        return self.client.models.generate_content_stream(
+            model=model,
+            contents=google_messages,
+            config=config
         )

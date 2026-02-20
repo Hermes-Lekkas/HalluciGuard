@@ -50,6 +50,7 @@ The project is organized as a Python package:
 - [x] Real-time streaming support (v0.3)
 - [x] Fine-tuned hallucination detection model (v0.4)
 - [x] Browser extension for ChatGPT/Claude.ai (v0.5)
+- [x] Multi-model provider expansion (Google Gemini & Latest Models) (v0.6)
 
 ---
 
