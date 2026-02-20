@@ -22,8 +22,10 @@ AI hallucinations are the #1 unsolved crisis in the AI industry. HalluciGuard is
 | 📊 **Confidence Scoring** | Scores each claim 0–1 using multiple signals |
 | 🌐 **Web Verification** | Cross-references claims against the web (Tavily, etc.) |
 | 📚 **RAG-Aware** | Verifies claims against your own retrieved context |
-| 🌊 **Streaming Support** | Works with real-time streaming LLM responses |
 | 🤖 **Agent Hooks** | Native integration with OpenClaw autonomous agents |
+| 🦜 **LangChain** | Drop-in `HalluciGuardCallbackHandler` for LangChain apps |
+| 🛡️ **Trust Badges** | Visual SVG badges showing real-time truth scores |
+| 💰 **Cost-Saving Cache** | Caches claim verification to reduce API bills by 80%+ |
 | 🧩 **Provider Agnostic** | Works with OpenAI, Anthropic, Google Gemini, Ollama, and more |
 | 🚦 **Risk Flagging** | Flags HIGH/MEDIUM/LOW risk claims before they reach users |
 | 📝 **Audit Logs** | Full JSON audit trail of every verification run |
@@ -118,8 +120,11 @@ guard = Guard(provider="openai", client=client, config=config)
 - [x] Browser extension for ChatGPT/Claude (Alpha) (v0.5)
 - [x] Multi-model provider expansion (v0.6)
 - [x] OpenClaw Agent Integration (v0.7)
-- [ ] Real-time "Lookahead" verification (v0.8)
-- [ ] Advanced RAG-aware deep-check (v0.9)
+- [x] LangChain Callback Adapter (v0.8)
+- [x] Trust Badge SVG Generator (v0.8)
+- [x] Cost-Saving Claim Cache (v0.8)
+- [ ] Hallucination Leaderboard (v0.9)
+- [ ] Real-time "Lookahead" verification (v0.9)
 - [ ] Enterprise dashboard + alerting (v1.0)
 
 ---

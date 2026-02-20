@@ -41,6 +41,8 @@ class GuardConfig:
         raise_on_critical: Raise HallucinationError if any CRITICAL claim is found.
         include_safe_claims: Include safe claims in the report (can be verbose).
         local_model_path: Path to a local fine-tuned model (e.g. GGUF or HF).
+        cache_enabled: Whether to cache claim verification results.
+        cache_dir: Directory to store cache files (default: .halluciguard_cache).
     """
 
     trust_threshold: float = 0.6
@@ -54,3 +56,5 @@ class GuardConfig:
     include_safe_claims: bool = True
     timeout_seconds: int = 30
     local_model_path: Optional[str] = None
+    cache_enabled: bool = True
+    cache_dir: str = ".halluciguard_cache"

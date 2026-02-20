@@ -23,6 +23,7 @@ from typing import Dict, Any, List
 
 from ..config import GuardConfig
 from ..models import Claim, RiskLevel
+from .badge import BadgeGenerator
 
 RISK_ICONS = {
     RiskLevel.SAFE: "✅",
@@ -57,6 +58,7 @@ class ReportBuilder:
             "flagged_claims_count": len(flagged),
             "safe_claims_count": len(safe),
             "flagged_claims": [self._claim_to_dict(c) for c in flagged],
+            "trust_badge": BadgeGenerator.generate_svg(trust_score),
         }
 
         if self.config.include_safe_claims:

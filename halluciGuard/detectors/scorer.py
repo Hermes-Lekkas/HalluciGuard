@@ -26,10 +26,11 @@ Scoring approach (multi-signal):
 
 import re
 import json
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Dict
 
 from ..config import GuardConfig
 from ..models import Claim, RiskLevel
+from ..cache.local import LocalFileCache, hash_claim
 
 SCORER_PROMPT = """You are a hallucination detector. For each factual claim below, assess the likelihood it is accurate.
 
@@ -106,6 +107,9 @@ class HallucinationScorer:
     def __init__(self, config: GuardConfig, llm_caller: Optional[Callable] = None):
         self.config = config
         self.llm_caller = llm_caller
+        self.cache = None
+        if self.config.cache_enabled:
+            self.cache = LocalFileCache(self.config.cache_dir)
 
     def score_all(
         self,
@@ -119,29 +123,69 @@ class HallucinationScorer:
         if not claims:
             return []
 
-        # 1. Primary scoring (Local model, LLM API, or heuristics)
+        final_claims: List[Claim] = []
+        remaining_claims: List[str] = []
+        cache_map: Dict[str, str] = {} # hash -> original text
+
+        # 1. Check Cache
+        if self.cache:
+            for c_text in claims:
+                h = hash_claim(c_text)
+                cached = self.cache.get(h)
+                if cached:
+                    final_claims.append(Claim(
+                        text=cached["text"],
+                        confidence=cached["confidence"],
+                        risk_level=RiskLevel(cached["risk_level"]),
+                        explanation=f"[CACHED] {cached['explanation']}",
+                        sources=cached.get("sources", []),
+                        is_verifiable=cached.get("is_verifiable", True)
+                    ))
+                else:
+                    remaining_claims.append(c_text)
+                    cache_map[h] = c_text
+        else:
+            remaining_claims = claims
+
+        if not remaining_claims:
+            return final_claims
+
+        # 2. Primary scoring for remaining claims
         scored = None
         if self.config.local_model_path:
             try:
-                scored = self._score_via_local_model(claims)
+                scored = self._score_via_local_model(remaining_claims)
             except Exception:
                 pass
 
         if not scored:
             try:
-                scored = self._score_via_llm(claims, model)
+                scored = self._score_via_llm(remaining_claims, model)
             except Exception:
-                scored = self._score_heuristic(claims)
+                scored = self._score_heuristic(remaining_claims)
 
-        # 2. RAG verification (High priority if context is provided)
+        # 3. RAG verification (High priority if context is provided)
         if rag_context:
             scored = self._enrich_with_rag_verification(scored, rag_context, model)
 
-        # 3. Web verification (optional enrichment)
+        # 4. Web verification (optional enrichment)
         if self.config.enable_web_verification and self.config.search_provider:
             scored = self._enrich_with_web_verification(scored, model)
 
-        return scored
+        # 5. Update Cache
+        if self.cache:
+            for s_claim in scored:
+                h = hash_claim(s_claim.text)
+                self.cache.set(h, {
+                    "text": s_claim.text,
+                    "confidence": s_claim.confidence,
+                    "risk_level": s_claim.risk_level.value,
+                    "explanation": s_claim.explanation,
+                    "sources": s_claim.sources,
+                    "is_verifiable": s_claim.is_verifiable
+                })
+
+        return final_claims + scored
 
     def _score_via_local_model(self, claims: List[str]) -> List[Claim]:
         """

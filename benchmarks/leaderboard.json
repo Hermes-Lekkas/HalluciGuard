@@ -1,0 +1,12 @@
+{
+  "gpt-4o-mini": {
+    "avg_trust_score": 0.5,
+    "hallucination_rate": 0.5,
+    "tests_run": 4
+  },
+  "gpt-4o": {
+    "avg_trust_score": 0.5,
+    "hallucination_rate": 0.5,
+    "tests_run": 4
+  }
+}
