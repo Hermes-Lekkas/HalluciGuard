@@ -22,6 +22,8 @@ import json
 import time
 import datetime
 import os
+import logging
+import warnings as warnings_module
 from typing import Any, Dict, List, Optional
 
 from .config import GuardConfig
@@ -30,6 +32,29 @@ from .detectors.extractor import ClaimExtractor
 from .detectors.scorer import HallucinationScorer
 from .reporters.builder import ReportBuilder
 from .streaming import StreamingGuardedResponse
+from .errors import (
+    HalluciGuardError,
+    ClientInitializationError,
+    UnsupportedProviderError,
+    ProviderAPIError,
+    ModelNotFoundError,
+    ProcessingError,
+    StreamingError,
+    wrap_provider_error,
+)
+
+# Configure logger for HalluciGuard
+logger = logging.getLogger("halluciGuard")
+
+
+def _get_utc_now() -> datetime.datetime:
+    """Get current UTC time in a timezone-aware manner (Python 3.11+ compatible)."""
+    try:
+        # Python 3.11+
+        return datetime.datetime.now(datetime.timezone.utc)
+    except AttributeError:
+        # Fallback for older Python versions
+        return datetime.datetime.utcnow()
 
 
 class HallucinationError(Exception):
@@ -78,9 +103,9 @@ class Guard:
         base_url: Optional[str] = None,
     ):
         if provider not in self.SUPPORTED_PROVIDERS:
-            raise ValueError(
-                f"Unsupported provider '{provider}'. "
-                f"Choose from: {self.SUPPORTED_PROVIDERS}"
+            raise UnsupportedProviderError(
+                provider=provider,
+                supported=self.SUPPORTED_PROVIDERS,
             )
 
         self.provider = provider
@@ -88,6 +113,7 @@ class Guard:
         self.config = config or GuardConfig()
         self.api_key = api_key
         self.base_url = base_url
+        self._client_init_error: Optional[str] = None
 
         # Auto-initialize client if missing but api_key/base_url provided
         if self.client is None:
@@ -95,20 +121,51 @@ class Guard:
                 try:
                     import openai
                     self.client = openai.OpenAI(api_key=api_key, base_url=base_url)
-                except ImportError:
-                    pass
+                    logger.debug("OpenAI client auto-initialized successfully")
+                except ImportError as e:
+                    self._client_init_error = (
+                        f"Failed to initialize OpenAI client: 'openai' package not installed. "
+                        f"Install with: pip install openai"
+                    )
+                    logger.warning(self._client_init_error)
+                except Exception as e:
+                    self._client_init_error = f"Failed to initialize OpenAI client: {e}"
+                    logger.warning(self._client_init_error)
             elif provider == "anthropic" and api_key:
                 try:
                     import anthropic
                     self.client = anthropic.Anthropic(api_key=api_key, base_url=base_url)
-                except ImportError:
-                    pass
+                    logger.debug("Anthropic client auto-initialized successfully")
+                except ImportError as e:
+                    self._client_init_error = (
+                        f"Failed to initialize Anthropic client: 'anthropic' package not installed. "
+                        f"Install with: pip install anthropic"
+                    )
+                    logger.warning(self._client_init_error)
+                except Exception as e:
+                    self._client_init_error = f"Failed to initialize Anthropic client: {e}"
+                    logger.warning(self._client_init_error)
             elif provider == "google" and api_key:
                 try:
                     from google import genai
                     self.client = genai.Client(api_key=api_key)
-                except ImportError:
-                    pass
+                    logger.debug("Google GenAI client auto-initialized successfully")
+                except ImportError as e:
+                    self._client_init_error = (
+                        f"Failed to initialize Google client: 'google-genai' package not installed. "
+                        f"Install with: pip install google-genai"
+                    )
+                    logger.warning(self._client_init_error)
+                except Exception as e:
+                    self._client_init_error = f"Failed to initialize Google client: {e}"
+                    logger.warning(self._client_init_error)
+            elif api_key is None and client is None:
+                # No API key provided and no client - this is a common issue
+                self._client_init_error = (
+                    f"No client or API key provided for provider '{provider}'. "
+                    f"Either pass a 'client' parameter or provide an 'api_key'."
+                )
+                logger.warning(self._client_init_error)
 
         # Internal components - passing self._call_provider to ensure they use the same auth/config
         self._extractor = ClaimExtractor(config=self.config, llm_caller=self._call_provider)
@@ -232,7 +289,7 @@ class Guard:
                 "model": model,
                 "provider": self.provider,
                 "elapsed_seconds": round(elapsed, 3),
-                "timestamp": datetime.datetime.utcnow().isoformat(),
+                "timestamp": _get_utc_now().isoformat(),
             },
         )
 
@@ -267,44 +324,102 @@ class Guard:
         elif self.provider == "ollama":
             return self._call_ollama(model, messages, **kwargs)
         else:
-            raise ValueError(f"Provider '{self.provider}' not implemented.")
+            raise UnsupportedProviderError(
+                provider=self.provider,
+                supported=["openai", "anthropic", "google", "ollama"],
+            )
 
     def _call_openai(self, model, messages, **kwargs):
         if self.client is None:
-            raise ValueError("client must be provided for OpenAI provider.")
-        resp = self.client.chat.completions.create(
-            model=model, messages=messages, **kwargs
-        )
-        content = resp.choices[0].message.content or ""
-        return resp, content
+            error_msg = self._client_init_error or "client must be provided for OpenAI provider."
+            raise ClientInitializationError(
+                f"OpenAI client not initialized. {error_msg}",
+                provider="openai",
+            )
+        try:
+            resp = self.client.chat.completions.create(
+                model=model, messages=messages, **kwargs
+            )
+            content = resp.choices[0].message.content or ""
+            return resp, content
+        except Exception as e:
+            # Check for common OpenAI errors
+            error_str = str(e).lower()
+            if "api key" in error_str or "unauthorized" in error_str or "401" in error_str:
+                raise ProviderAPIError(
+                    provider="openai",
+                    original_error=e,
+                    status_code=401,
+                )
+            elif "rate limit" in error_str or "429" in error_str:
+                raise ProviderAPIError(
+                    provider="openai",
+                    original_error=e,
+                    status_code=429,
+                )
+            elif "model" in error_str and ("not found" in error_str or "does not exist" in error_str):
+                raise ModelNotFoundError(
+                    model=model,
+                    provider="openai",
+                )
+            else:
+                raise wrap_provider_error(e, "openai")
 
     def _call_anthropic(self, model, messages, **kwargs):
         if self.client is None:
-            raise ValueError("client must be provided for Anthropic provider.")
-        # Convert OpenAI-format messages to Anthropic format
-        system_prompt = ""
-        anthropic_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                system_prompt = msg["content"]
+            error_msg = self._client_init_error or "client must be provided for Anthropic provider."
+            raise ClientInitializationError(
+                f"Anthropic client not initialized. {error_msg}",
+                provider="anthropic",
+            )
+        try:
+            # Convert OpenAI-format messages to Anthropic format
+            system_prompt = ""
+            anthropic_messages = []
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_prompt = msg["content"]
+                else:
+                    anthropic_messages.append(msg)
+
+            call_kwargs = {"max_tokens": kwargs.pop("max_tokens", 2048), **kwargs}
+            if system_prompt:
+                call_kwargs["system"] = system_prompt
+
+            resp = self.client.messages.create(
+                model=model,
+                messages=anthropic_messages,
+                **call_kwargs,
+            )
+            content = resp.content[0].text if resp.content else ""
+            return resp, content
+        except Exception as e:
+            error_str = str(e).lower()
+            if "api key" in error_str or "unauthorized" in error_str or "401" in error_str:
+                raise ProviderAPIError(
+                    provider="anthropic",
+                    original_error=e,
+                    status_code=401,
+                )
+            elif "rate limit" in error_str or "429" in error_str:
+                raise ProviderAPIError(
+                    provider="anthropic",
+                    original_error=e,
+                    status_code=429,
+                )
+            elif "model" in error_str and ("not found" in error_str or "does not exist" in error_str):
+                raise ModelNotFoundError(
+                    model=model,
+                    provider="anthropic",
+                )
             else:
-                anthropic_messages.append(msg)
-
-        call_kwargs = {"max_tokens": kwargs.pop("max_tokens", 2048), **kwargs}
-        if system_prompt:
-            call_kwargs["system"] = system_prompt
-
-        resp = self.client.messages.create(
-            model=model,
-            messages=anthropic_messages,
-            **call_kwargs,
-        )
-        content = resp.content[0].text if resp.content else ""
-        return resp, content
+                raise wrap_provider_error(e, "anthropic")
 
     def _call_ollama(self, model, messages, **kwargs):
         """Call a local Ollama server (OpenAI-compatible API)."""
         import urllib.request
+        import urllib.error
+        
         url = (self.base_url or "http://localhost:11434") + "/api/chat"
         payload = json.dumps({
             "model": model,
@@ -316,10 +431,18 @@ class Guard:
             url, data=payload,
             headers={"Content-Type": "application/json"}
         )
-        with urllib.request.urlopen(req, timeout=self.config.timeout_seconds) as r:
-            resp = json.loads(r.read().decode())
-        content = resp.get("message", {}).get("content", "")
-        return resp, content
+        try:
+            with urllib.request.urlopen(req, timeout=self.config.timeout_seconds) as r:
+                resp = json.loads(r.read().decode())
+            content = resp.get("message", {}).get("content", "")
+            return resp, content
+        except urllib.error.URLError as e:
+            raise ProviderAPIError(
+                provider="ollama",
+                original_error=e,
+            )
+        except Exception as e:
+            raise wrap_provider_error(e, "ollama")
 
     def _compute_trust_score(self, claims: List[Claim]) -> float:
         """Compute an overall trust score from a list of scored claims."""
@@ -354,10 +477,10 @@ class Guard:
         messages: List[Dict],
     ):
         os.makedirs(self.config.audit_log_path, exist_ok=True)
-        ts = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+        ts = _get_utc_now().strftime("%Y%m%d_%H%M%S_%f")
         filename = os.path.join(self.config.audit_log_path, f"guard_{ts}.json")
         audit = {
-            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "timestamp": _get_utc_now().isoformat(),
             "model": model,
             "query": messages[-1].get("content", "")[:500] if messages else "",
             "report": report,
@@ -374,86 +497,115 @@ class Guard:
         elif self.provider == "google":
             return self._call_google_stream(model, messages, **kwargs)
         else:
-            raise ValueError(f"Streaming for provider '{self.provider}' not implemented.")
+            raise StreamingError(
+                provider=self.provider,
+                reason=f"Streaming not supported for provider '{self.provider}'",
+            )
 
     def _call_openai_stream(self, model, messages, **kwargs):
         if self.client is None:
-            raise ValueError("client must be provided for OpenAI provider.")
-        return self.client.chat.completions.create(
-            model=model, messages=messages, stream=True, **kwargs
-        )
+            error_msg = self._client_init_error or "client must be provided for OpenAI provider."
+            raise ClientInitializationError(
+                f"OpenAI client not initialized. {error_msg}",
+                provider="openai",
+            )
+        try:
+            return self.client.chat.completions.create(
+                model=model, messages=messages, stream=True, **kwargs
+            )
+        except Exception as e:
+            raise wrap_provider_error(e, "openai")
 
     def _call_anthropic_stream(self, model, messages, **kwargs):
         if self.client is None:
-            raise ValueError("client must be provided for Anthropic provider.")
-        system_prompt = ""
-        anthropic_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                system_prompt = msg["content"]
-            else:
-                anthropic_messages.append(msg)
+            error_msg = self._client_init_error or "client must be provided for Anthropic provider."
+            raise ClientInitializationError(
+                f"Anthropic client not initialized. {error_msg}",
+                provider="anthropic",
+            )
+        try:
+            system_prompt = ""
+            anthropic_messages = []
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_prompt = msg["content"]
+                else:
+                    anthropic_messages.append(msg)
 
-        call_kwargs = {"max_tokens": kwargs.pop("max_tokens", 2048), **kwargs}
-        if system_prompt:
-            call_kwargs["system"] = system_prompt
+            call_kwargs = {"max_tokens": kwargs.pop("max_tokens", 2048), **kwargs}
+            if system_prompt:
+                call_kwargs["system"] = system_prompt
 
-        return self.client.messages.create(
-            model=model,
-            messages=anthropic_messages,
-            stream=True,
-            **call_kwargs,
-        )
+            return self.client.messages.create(
+                model=model,
+                messages=anthropic_messages,
+                stream=True,
+                **call_kwargs,
+            )
+        except Exception as e:
+            raise wrap_provider_error(e, "anthropic")
 
     def _call_google(self, model, messages, **kwargs):
         if self.client is None:
-            raise ValueError("client (google.genai) must be initialized for Google provider.")
-        
-        # Split into system instruction and conversation history
-        system_instruction = None
-        google_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                system_instruction = msg["content"]
-            else:
-                google_messages.append({
-                    "role": "user" if msg["role"] == "user" else "model",
-                    "parts": [{"text": msg["content"]}]
-                })
+            error_msg = self._client_init_error or "client (google.genai) must be initialized for Google provider."
+            raise ClientInitializationError(
+                f"Google client not initialized. {error_msg}",
+                provider="google",
+            )
+        try:
+            # Split into system instruction and conversation history
+            system_instruction = None
+            google_messages = []
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_instruction = msg["content"]
+                else:
+                    google_messages.append({
+                        "role": "user" if msg["role"] == "user" else "model",
+                        "parts": [{"text": msg["content"]}]
+                    })
 
-        # google-genai uses generate_content with a config
-        config = {"system_instruction": system_instruction}
-        config.update(kwargs)
-        
-        resp = self.client.models.generate_content(
-            model=model,
-            contents=google_messages,
-            config=config
-        )
-        
-        content = resp.text
-        return resp, content
+            # google-genai uses generate_content with a config
+            config = {"system_instruction": system_instruction}
+            config.update(kwargs)
+            
+            resp = self.client.models.generate_content(
+                model=model,
+                contents=google_messages,
+                config=config
+            )
+            
+            content = resp.text
+            return resp, content
+        except Exception as e:
+            raise wrap_provider_error(e, "google")
 
     def _call_google_stream(self, model, messages, **kwargs):
         if self.client is None:
-            raise ValueError("client (google.genai) must be initialized for Google provider.")
-        
-        system_instruction = None
-        google_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                system_instruction = msg["content"]
-            else:
-                google_messages.append({
-                    "role": "user" if msg["role"] == "user" else "model",
-                    "parts": [{"text": msg["content"]}]
-                })
+            error_msg = self._client_init_error or "client (google.genai) must be initialized for Google provider."
+            raise ClientInitializationError(
+                f"Google client not initialized. {error_msg}",
+                provider="google",
+            )
+        try:
+            system_instruction = None
+            google_messages = []
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_instruction = msg["content"]
+                else:
+                    google_messages.append({
+                        "role": "user" if msg["role"] == "user" else "model",
+                        "parts": [{"text": msg["content"]}]
+                    })
 
-        config = {"system_instruction": system_instruction}
-        config.update(kwargs)
+            config = {"system_instruction": system_instruction}
+            config.update(kwargs)
 
-        return self.client.models.generate_content_stream(
-            model=model,
-            contents=google_messages,
-            config=config
-        )
+            return self.client.models.generate_content_stream(
+                model=model,
+                contents=google_messages,
+                config=config
+            )
+        except Exception as e:
+            raise wrap_provider_error(e, "google")

@@ -230,7 +230,8 @@ class TestGuard:
         assert guard.provider == "openai"
 
     def test_guard_init_invalid_provider(self):
-        with pytest.raises(ValueError, match="Unsupported provider"):
+        from halluciGuard.errors import UnsupportedProviderError
+        with pytest.raises(UnsupportedProviderError, match="Unsupported provider"):
             Guard(provider="fakeai")
 
     def test_compute_trust_score_no_claims(self):

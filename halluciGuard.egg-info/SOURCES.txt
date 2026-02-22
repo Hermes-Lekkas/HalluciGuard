@@ -1,9 +1,11 @@
 LICENSE
 README.md
 pyproject.toml
-setup.py
 halluciGuard/__init__.py
+halluciGuard/__main__.py
+halluciGuard/cli_module.py
 halluciGuard/config.py
+halluciGuard/errors.py
 halluciGuard/guard.py
 halluciGuard/models.py
 halluciGuard/server.py
@@ -11,6 +13,7 @@ halluciGuard/streaming.py
 halluciGuard.egg-info/PKG-INFO
 halluciGuard.egg-info/SOURCES.txt
 halluciGuard.egg-info/dependency_links.txt
+halluciGuard.egg-info/entry_points.txt
 halluciGuard.egg-info/requires.txt
 halluciGuard.egg-info/top_level.txt
 tests/test_halluciGuard.py

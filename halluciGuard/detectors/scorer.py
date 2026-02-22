@@ -24,6 +24,7 @@ Scoring approach (multi-signal):
 4. (Optional) Web verification: Cross-references with search results.
 """
 
+import logging
 import re
 import json
 from typing import List, Optional, Callable, Dict
@@ -31,6 +32,10 @@ from typing import List, Optional, Callable, Dict
 from ..config import GuardConfig
 from ..models import Claim, RiskLevel
 from ..cache.local import LocalFileCache, hash_claim
+from ..errors import ScoringError, WebVerificationError, CacheError
+
+# Configure logger for HalluciGuard
+logger = logging.getLogger("halluciGuard")
 
 SCORER_PROMPT = """You are a hallucination detector. For each factual claim below, assess the likelihood it is accurate.
 
@@ -109,7 +114,14 @@ class HallucinationScorer:
         self.llm_caller = llm_caller
         self.cache = None
         if self.config.cache_enabled:
-            self.cache = LocalFileCache(self.config.cache_dir)
+            try:
+                self.cache = LocalFileCache(self.config.cache_dir)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize cache at {self.config.cache_dir}: {e}. "
+                    f"Continuing without caching."
+                )
+                self.cache = None
 
     def score_all(
         self,
@@ -155,13 +167,20 @@ class HallucinationScorer:
         if self.config.local_model_path:
             try:
                 scored = self._score_via_local_model(remaining_claims)
-            except Exception:
-                pass
+                logger.debug(f"Scored {len(scored)} claims using local model")
+            except Exception as e:
+                logger.warning(
+                    f"Local model scoring failed: {e}. Falling back to LLM scoring."
+                )
 
         if not scored:
             try:
                 scored = self._score_via_llm(remaining_claims, model)
-            except Exception:
+                logger.debug(f"Scored {len(scored)} claims using LLM verifier")
+            except Exception as e:
+                logger.warning(
+                    f"LLM scoring failed, falling back to heuristics. Error: {e}"
+                )
                 scored = self._score_heuristic(remaining_claims)
 
         # 3. RAG verification (High priority if context is provided)

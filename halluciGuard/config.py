@@ -19,9 +19,35 @@ Configuration for HalluciGuard.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 from .models import RiskLevel
 from .search.base import BaseSearchProvider
+
+
+def _parse_risk_level(value: Union[RiskLevel, str]) -> RiskLevel:
+    """
+    Convert a string or RiskLevel to a RiskLevel enum.
+    
+    Args:
+        value: Either a RiskLevel enum or a string like "MEDIUM", "HIGH", etc.
+    
+    Returns:
+        RiskLevel enum value.
+    
+    Raises:
+        ValueError: If the string doesn't match a valid RiskLevel.
+    """
+    if isinstance(value, RiskLevel):
+        return value
+    if isinstance(value, str):
+        try:
+            return RiskLevel[value.upper()]
+        except KeyError:
+            valid_levels = [level.name for level in RiskLevel]
+            raise ValueError(
+                f"Invalid risk level '{value}'. Must be one of: {valid_levels}"
+            )
+    raise ValueError(f"Invalid risk level type: {type(value)}. Expected RiskLevel or str.")
 
 
 @dataclass
@@ -33,6 +59,7 @@ class GuardConfig:
         trust_threshold: Minimum trust score (0.0–1.0) to consider a response safe.
                          Responses below this score will raise a LowTrustWarning.
         flag_level: Minimum risk level to include in flagged_claims.
+                    Can be a RiskLevel enum or string (e.g., "MEDIUM", "HIGH").
         enable_web_verification: Cross-reference claims against web search results.
         search_provider: Instance of BaseSearchProvider to use for web verification.
         verifier_model: LLM model used for claim verification (default: same as chat model).
@@ -46,7 +73,7 @@ class GuardConfig:
     """
 
     trust_threshold: float = 0.6
-    flag_level: RiskLevel = RiskLevel.MEDIUM
+    flag_level: Union[RiskLevel, str] = RiskLevel.MEDIUM
     enable_web_verification: bool = False
     search_provider: Optional[BaseSearchProvider] = None
     verifier_model: Optional[str] = None
@@ -58,3 +85,7 @@ class GuardConfig:
     local_model_path: Optional[str] = None
     cache_enabled: bool = True
     cache_dir: str = ".halluciguard_cache"
+
+    def __post_init__(self):
+        """Normalize flag_level to RiskLevel enum if passed as string."""
+        self.flag_level = _parse_risk_level(self.flag_level)

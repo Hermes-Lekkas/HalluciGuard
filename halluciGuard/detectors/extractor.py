@@ -19,10 +19,15 @@ ClaimExtractor — Uses an LLM call to parse factual claims from a response.
 """
 
 import json
+import logging
 import re
 from typing import List, Optional, Callable
 
 from ..config import GuardConfig
+from ..errors import ClaimExtractionError, MissingDependencyError
+
+# Configure logger for HalluciGuard
+logger = logging.getLogger("halluciGuard")
 
 EXTRACTION_PROMPT = """You are a factual claim extractor. Given an AI response, extract all discrete factual claims.
 
@@ -67,6 +72,10 @@ class ClaimExtractor:
             return self._extract_via_llm(response_text, model)
         except Exception as e:
             # Graceful degradation: use heuristic extraction
+            logger.warning(
+                f"LLM-based claim extraction failed, falling back to heuristics. "
+                f"Error: {e}"
+            )
             return self._extract_heuristic(response_text)
 
     def _extract_via_llm(self, response_text: str, model: str) -> List[str]:
@@ -78,13 +87,17 @@ class ClaimExtractor:
 
         if self.llm_caller:
             # Use the caller provided by the Guard (re-uses same client/auth)
-            _, raw = self.llm_caller(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,
-                max_tokens=800,
-            )
-            return self._parse_claims_json(raw)
+            try:
+                _, raw = self.llm_caller(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0,
+                    max_tokens=800,
+                )
+                return self._parse_claims_json(raw)
+            except Exception as e:
+                logger.warning(f"LLM caller failed during claim extraction: {e}")
+                raise
 
         # Try to use OpenAI if available (legacy fallback)
         try:
@@ -98,8 +111,10 @@ class ClaimExtractor:
             )
             raw = resp.choices[0].message.content or "[]"
             return self._parse_claims_json(raw)
-        except Exception:
-            pass
+        except ImportError:
+            logger.debug("OpenAI package not available for claim extraction")
+        except Exception as e:
+            logger.debug(f"OpenAI claim extraction failed: {e}")
 
         # Try Anthropic if available
         try:
@@ -112,10 +127,14 @@ class ClaimExtractor:
             )
             raw = resp.content[0].text if resp.content else "[]"
             return self._parse_claims_json(raw)
-        except Exception:
-            pass
+        except ImportError:
+            logger.debug("Anthropic package not available for claim extraction")
+        except Exception as e:
+            logger.debug(f"Anthropic claim extraction failed: {e}")
 
-        raise RuntimeError("No LLM client available for claim extraction.")
+        raise ClaimExtractionError(
+            "No LLM client available for claim extraction",
+        )
 
     def _parse_claims_json(self, raw: str) -> List[str]:
         """Parse JSON array from LLM output, with fallback cleaning."""

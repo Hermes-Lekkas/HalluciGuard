@@ -1,0 +1,2 @@
+[console_scripts]
+halluciGuard = halluciGuard.cli_module:cli_entry

@@ -2,7 +2,6 @@ Metadata-Version: 2.4
 Name: halluciGuard
 Version: 0.1.0
 Summary: Open-source AI hallucination detection middleware for LLM pipelines
-Home-page: https://github.com/Hermes-Lekkas/HalluciGuard
 Author: HalluciGuard Contributors
 License: AGPL-3.0
 Keywords: ai,llm,hallucination,safety,reliability,openai,anthropic
@@ -20,6 +19,9 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: requests>=2.31.0
 Requires-Dist: pydantic>=2.0.0
+Requires-Dist: typer>=0.9.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: tomli>=2.0.0; python_version < "3.11"
 Provides-Extra: openai
 Requires-Dist: openai>=1.0.0; extra == "openai"
 Provides-Extra: anthropic
@@ -50,9 +52,7 @@ Requires-Dist: google-genai>=1.0.0; extra == "all"
 Requires-Dist: fastapi>=0.100.0; extra == "all"
 Requires-Dist: uvicorn>=0.20.0; extra == "all"
 Requires-Dist: langchain-core>=0.1.0; extra == "all"
-Dynamic: home-page
 Dynamic: license-file
-Dynamic: requires-python
 
 # 🛡️ HalluciGuard
 

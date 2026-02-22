@@ -34,6 +34,16 @@ RISK_ICONS = {
 }
 
 
+def _get_utc_now() -> datetime.datetime:
+    """Get current UTC time in a timezone-aware manner (Python 3.11+ compatible)."""
+    try:
+        # Python 3.11+
+        return datetime.datetime.now(datetime.timezone.utc)
+    except AttributeError:
+        # Fallback for older Python versions
+        return datetime.datetime.utcnow()
+
+
 class ReportBuilder:
     def __init__(self, config: GuardConfig):
         self.config = config
@@ -50,7 +60,7 @@ class ReportBuilder:
         safe = [c for c in claims if c.risk_level.value in ("SAFE", "LOW")]
 
         report = {
-            "generated_at": datetime.datetime.utcnow().isoformat(),
+            "generated_at": _get_utc_now().isoformat(),
             "elapsed_seconds": round(elapsed_seconds, 3),
             "trust_score": trust_score,
             "trust_label": self._trust_label(trust_score),
