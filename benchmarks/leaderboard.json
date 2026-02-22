@@ -1,72 +1,58 @@
 {
-  "gpt-4o": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gpt-4o-mini": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gpt-5.3-codex": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gpt-5.2-instant": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gpt-5.2-thinking": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "claude-3-5-sonnet-20240620": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "claude-3-opus-20240229": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "claude-opus-4.6": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "claude-sonnet-4.6": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gemini-1.5-pro": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gemini-1.5-flash": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gemini-3.1-pro": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gemini-3-deep-think": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  },
-  "gemini-3-flash": {
-    "avg_trust_score": 0.5,
-    "hallucination_rate": 0.5,
-    "tests_run": 4
-  }
+  "timestamp": "2026-02-22T00:33:26.375579",
+  "version": "1.0",
+  "total_models": 1,
+  "leaderboard": [
+    {
+      "model": "gpt-4o-mini",
+      "provider": "openai",
+      "total_cases": 19,
+      "avg_trust_score": 0.0,
+      "hallucination_rate": 1.0,
+      "avg_latency_seconds": 0.0,
+      "category_scores": {
+        "science": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 3
+        },
+        "history": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 3
+        },
+        "medical": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 2
+        },
+        "geography": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 3
+        },
+        "code": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 2
+        },
+        "math": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 2
+        },
+        "legal": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 1
+        },
+        "general": {
+          "avg_trust_score": 0.0,
+          "hallucination_rate": 1.0,
+          "cases": 3
+        }
+      },
+      "timestamp": "2026-02-22T00:33:26.373650"
+    }
+  ]
 }
