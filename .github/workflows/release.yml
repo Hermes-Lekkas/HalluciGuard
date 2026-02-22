@@ -1,0 +1,190 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: false
+
+jobs:
+  # Build Python package for PyPI
+  build-pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypi-dist
+          path: dist/
+
+  # Build standalone executables for each platform
+  build-executables:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+          - os: macos-latest
+            platform: macos
+            arch: x64
+          - os: windows-latest
+            platform: windows
+            arch: x64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -e .
+
+      - name: Build executable (Linux/macOS)
+        if: matrix.platform != 'windows'
+        run: |
+          pyinstaller --onefile --name halluciGuard-${{ matrix.platform }} \
+            --add-data "halluciGuard:halluciGuard" \
+            --hidden-import=typer \
+            --hidden-import=rich \
+            --hidden-import=pydantic \
+            -c \
+            halluciGuard/cli_module.py
+
+      - name: Build executable (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          pyinstaller --onefile --name halluciGuard-${{ matrix.platform }}.exe `
+            --add-data "halluciGuard;halluciGuard" `
+            --hidden-import=typer `
+            --hidden-import=rich `
+            --hidden-import=pydantic `
+            -c `
+            halluciGuard/cli_module.py
+        shell: pwsh
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: halluciGuard-${{ matrix.platform }}
+          path: dist/halluciGuard-${{ matrix.platform }}*
+
+  # Run tests before release
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  # Create GitHub Release
+  create-release:
+    needs: [build-pypi, build-executables, test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/pypi-dist/*
+            artifacts/halluciGuard-linux/*
+            artifacts/halluciGuard-macos/*
+            artifacts/halluciGuard-windows/*
+          body: |
+            ## 🛡️ HalluciGuard ${{ github.ref_name }}
+            
+            ### Installation
+            
+            **Via PyPI:**
+            ```bash
+            pip install halluciGuard
+            ```
+            
+            **Standalone Executables:**
+            - **Linux**: Download `halluciGuard-linux`
+            - **macOS**: Download `halluciGuard-macos`
+            - **Windows**: Download `halluciGuard-windows.exe`
+            
+            ### CLI Usage
+            ```bash
+            halluciGuard --help
+            halluciGuard check "Your text here"
+            halluciGuard chat --model gpt-4o
+            ```
+            
+            ### What's Changed
+            See [CHANGELOG.md](CHANGELOG.md) for details.
+          draft: false
+          prerelease: false
+
+  # Publish to PyPI (manual trigger or tag)
+  publish-pypi:
+    needs: [build-pypi, test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download PyPI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: pypi-dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
